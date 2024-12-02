@@ -1,0 +1,14 @@
+{
+  "resourceName": "AWSTranslationInputBucket",
+  "policyUUID": "8e4561e4",
+  "bucketName": "input-bucket",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "S3Trigger674c2706",
+  "groupAccess": {}
+}
