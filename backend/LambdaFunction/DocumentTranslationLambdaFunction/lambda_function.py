@@ -3,6 +3,10 @@ import os
 from pdf2docx import Converter
 import logging
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 # AWS clients
 s3_client = boto3.client('s3')
 translate_client = boto3.client('translate')
@@ -10,6 +14,34 @@ translate_client = boto3.client('translate')
 # Logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+def send_email_via_ses(to_email, subject, body):
+    """
+    Sends an email using Amazon SES via SMTP.
+    """
+    smtp_server = os.getenv('SES_SMTP_SERVER', 'email-smtp.us-west-1.amazonaws.com')
+    smtp_port = int(os.getenv('SES_SMTP_PORT', 587))
+    smtp_user = os.getenv('SES_SMTP_USER')
+    smtp_password = os.getenv('SES_SMTP_PASSWORD')
+    from_email = os.getenv('SES_FROM_EMAIL','omkarnagarkar53@gmail.com')
+
+    # Create the email
+    msg = MIMEMultipart()
+    msg['From'] = from_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        # Connect to the SMTP server and send the email
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()  # Secure the connection
+            server.login(smtp_user, smtp_password)
+            server.sendmail(from_email, to_email, msg.as_string())
+        logger.info(f"Email sent successfully to {to_email}.")
+    except Exception as e:
+        logger.error(f"Failed to send email: {e}")
+
 
 # Translation Job Function
 def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, data_access_role_arn, file_extension):
@@ -108,7 +140,10 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': f"Unsupported file type for file: {file_key}"
             }
-
+        
+        # Send email notification after successful translation
+        to_email = os.getenv('SES_RECIPIENT_EMAIL', 'omkarnagarkar53@gmail.com')
+        send_email_via_ses(to_email=to_email, subject="Translation Completed", body=f"The translation of '{os.path.basename(file_key)}' has been completed successfully and uploaded to outputbucket-dev'.")
         return {
             'statusCode': 200,
             'body': f"File {file_key} processed successfully"

@@ -14,8 +14,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org -r requirements.txt
 
 # Set the environment variables
-ENV OUTPUT_BUCKET_NAME=default-bucket
-ENV IAM_ROLE_ARN=default-role
+ENV OUTPUT_BUCKET_NAME=
+ENV IAM_ROLE_ARN=
+ENV SES_RECIPIENT_EMAIL=
+ENV SES_SMTP_SERVER=
+ENV SES_SMTP_PORT=
+ENV SES_SMTP_USER=
+ENV SES_SMTP_PASSWORD=
+ENV SES_FROM_EMAIL=
 
 # Define the Lambda function handler
 CMD ["lambda_function.lambda_handler"]
