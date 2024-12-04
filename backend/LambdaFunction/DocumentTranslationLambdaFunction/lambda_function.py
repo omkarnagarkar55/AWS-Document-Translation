@@ -83,7 +83,7 @@ def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, dat
         response = translate_client.start_text_translation_job(
             JobName="My-Lambda-Translation-Job",
             InputDataConfig={
-                'S3Uri': f's3://{bucket_name}/input',
+                'S3Uri': f's3://{bucket_name}/input/{fileId}',
                 'ContentType': content_type
             },
             OutputDataConfig={
@@ -128,7 +128,7 @@ def handle_txt(bucket_name, file_key, target_language ,fileId):
     translated_text = response['TranslatedText']
 
     output_bucket = os.getenv('OUTPUT_BUCKET', 'outputbucket-dev')
-    output_key = f"Translated-{file_name}"
+    output_key = f"output/Translated-{file_name}"
     s3_client.put_object(Body=translated_text.encode('utf-8'), Bucket=output_bucket, Key=output_key)
     logger.info(f"TXT file translated and saved to {output_bucket}/{output_key}")
 

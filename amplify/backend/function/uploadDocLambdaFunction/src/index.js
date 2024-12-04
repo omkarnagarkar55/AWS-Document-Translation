@@ -22,7 +22,7 @@ exports.handler = async (event) => {
 
     const params = {
         Bucket: bucketName,
-        Key: `input/${encodeURIComponent(fileName)}`,
+        Key: `input/${fileId}/${encodeURIComponent(fileName)}`,
         Expires: 800, // Expires in 5 minutes
         ContentType: fileType,
         Metadata: {
