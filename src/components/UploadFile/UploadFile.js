@@ -59,9 +59,9 @@ function UploadFile() {
       });
 
       if (result.ok) {
-        alert("Upload successful!");
+        console.log("Upload successful!");
       } else {
-        alert("Upload failed.");
+        console.log("Upload failed.");
       }
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -78,6 +78,9 @@ function UploadFile() {
           </option>
         ))}
       </select>
+      <br />
+      <br />
+      
       <button onClick={uploadFile}>Upload and Translate</button>
     </div>
   );

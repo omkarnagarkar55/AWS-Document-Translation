@@ -16,7 +16,7 @@ exports.handler = async (event) => {
 
     const params = {
         Bucket: 'input-bucketbd99d-dev',
-        Key: encodeURIComponent(fileName),
+        Key: `input/${encodeURIComponent(fileName)}`,
         Expires: 600, // Expires in 5 minutes
         ContentType: fileType,
         //ACL: 'public-read' // or 'private', depending on your needs
