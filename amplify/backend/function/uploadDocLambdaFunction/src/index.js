@@ -10,15 +10,19 @@ const s3 = new AWS.S3();
 
 exports.handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-    const { fileName, fileType } = JSON.parse(event.body);
+    const { fileName, fileType, languageCode } = JSON.parse(event.body);
     console.log("Filetype :", fileType)
     console.log("FileName :", fileName)
+    console.log("LanguageCode :", languageCode)
 
     const params = {
         Bucket: 'input-bucketbd99d-dev',
         Key: `input/${encodeURIComponent(fileName)}`,
-        Expires: 600, // Expires in 5 minutes
+        Expires: 800, // Expires in 5 minutes
         ContentType: fileType,
+        Metadata: {
+          languageCode
+        },
         //ACL: 'public-read' // or 'private', depending on your needs
       };
 

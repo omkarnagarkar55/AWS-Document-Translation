@@ -19,7 +19,7 @@
       "function": {
         "uploadDocLambdaFunction": {
           "deploymentBucketName": "amplify-awstranslate-dev-bd99d-deployment",
-          "s3Key": "amplify-builds/uploadDocLambdaFunction-6f50414562436e6e7331-build.zip"
+          "s3Key": "amplify-builds/uploadDocLambdaFunction-3930566c6539747a7642-build.zip"
         },
         "S3Trigger674c2706": {
           "deploymentBucketName": "amplify-awstranslate-dev-bd99d-deployment",

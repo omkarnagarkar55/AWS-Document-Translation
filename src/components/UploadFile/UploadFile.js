@@ -39,6 +39,7 @@ function UploadFile() {
     try {
       const authToken = (await fetchAuthSession()).tokens?.idToken?.toString();
       console.log("authToken:", authToken);
+
       const { body } = await post({
         apiName: "uploadAPI",
         path: "/upload",
@@ -49,6 +50,7 @@ function UploadFile() {
           body: {
             fileName: file.name,
             fileType: file.type,
+            languageCode: language,
           },
         },
       }).response;

@@ -44,7 +44,7 @@ def send_email_via_ses(to_email, subject, body):
 
 
 # Translation Job Function
-def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, data_access_role_arn, file_extension):
+def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, data_access_role_arn, file_extension, target_language):
     content_type = 'text/plain' if file_extension == 'txt' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     try:
         response = translate_client.start_text_translation_job(
@@ -58,7 +58,7 @@ def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, dat
             },
             DataAccessRoleArn=data_access_role_arn,
             SourceLanguageCode='en',
-            TargetLanguageCodes=[os.getenv('TARGET_LANGUAGE', 'hi')]
+            TargetLanguageCodes=[target_language]
         )
         logger.info(f"Translation job started: {response['JobId']}")
         return {
@@ -73,7 +73,7 @@ def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, dat
         }
 
 # Function to handle TXT files
-def handle_txt(bucket_name, file_key):
+def handle_txt(bucket_name, file_key, target_language):
     file_name = os.path.basename(file_key)
     local_path = f"/tmp/{file_name}"
     s3_client.download_file(bucket_name, file_key, local_path)
@@ -81,7 +81,6 @@ def handle_txt(bucket_name, file_key):
     with open(local_path, 'r', encoding='utf-8') as file:
         content = file.read()
 
-    target_language = os.getenv('TARGET_LANGUAGE', 'hi')  # Default to English
     response = translate_client.translate_text(
         Text=content,
         SourceLanguageCode='en',
@@ -94,8 +93,24 @@ def handle_txt(bucket_name, file_key):
     s3_client.put_object(Body=translated_text.encode('utf-8'), Bucket=output_bucket, Key=output_key)
     logger.info(f"TXT file translated and saved to {output_bucket}/{output_key}")
 
+    # generate presigned URL
+    presigned_url = s3_client.generate_presigned_url('get_object', Params={'Bucket': output_bucket, 'Key': output_key}, ExpiresIn=3600)
+    logger.info(f"Presigned URL: {presigned_url}")
+
+    # Send email notification after successful translation
+    to_email = os.getenv('SES_RECIPIENT_EMAIL', 'omkarnagarkar53@gmail.com')
+    send_email_via_ses(to_email=to_email, subject="Translation Completed", body=f"""
+    <html>
+    <body>
+        <p>Your translated file is ready for download. You can download it using the following link:</p>
+        <p><a href="{presigned_url}">Download Translated File</a></p>
+        <p>The link will expire in 1 hour.</p>
+    </body>
+    </html>
+    """)
+
 # Function to handle PDF files
-def handle_pdf(bucket_name, file_key, data_access_role_arn):
+def handle_pdf(bucket_name, file_key, data_access_role_arn, target_language):
     file_name = os.path.basename(file_key)
     local_pdf_path = f"/tmp/{file_name}"
     s3_client.download_file(bucket_name, file_key, local_pdf_path)
@@ -110,13 +125,13 @@ def handle_pdf(bucket_name, file_key, data_access_role_arn):
     intermediate_key = f"input/Converted-{new_file_name}"
     s3_client.upload_file(local_docx_path, intermediate_bucket, intermediate_key)
 
-    handle_docx(intermediate_bucket, intermediate_key, data_access_role_arn)
+    handle_docx(intermediate_bucket, intermediate_key, data_access_role_arn, target_language)
 
 # Function to handle DOCX files
-def handle_docx(bucket_name, file_key, data_access_role_arn):
+def handle_docx(bucket_name, file_key, data_access_role_arn, target_language):
     output_bucket = os.getenv('OUTPUT_BUCKET', 'outputbucket-dev')
     output_prefix = f"Translated-{file_key}"
-    translation_job(bucket_name, file_key, output_bucket, output_prefix, data_access_role_arn, 'docx')
+    translation_job(bucket_name, file_key, output_bucket, output_prefix, data_access_role_arn, 'docx', target_language)
 
 # Lambda Handler
 def lambda_handler(event, context):
@@ -124,16 +139,24 @@ def lambda_handler(event, context):
         bucket_name = event['Records'][0]['s3']['bucket']['name']
         file_key = event['Records'][0]['s3']['object']['key']
         logger.info(f"Processing file: {file_key} from bucket: {bucket_name}")
-
         data_access_role_arn = os.getenv('DATA_ACCESS_ROLE_ARN','arn:aws:iam::867344435459:role/TranslateDataAccessRole')
+
+        response = s3_client.head_object(Bucket=bucket_name, Key=file_key)
+        logger.info(f"Head Object Response: {response}")
+        metadata = response.get('Metadata', {})
+        
+        # Extract language metadata
+        language = metadata.get('languagecode', 'en')  # Default to English if not provided
+        print(f"Processing file '{file_key}' with language: {language}")
+
 
         # Determine the file type
         if file_key.endswith('.txt'):
-            handle_txt(bucket_name, file_key)
+            handle_txt(bucket_name, file_key, language)
         elif file_key.endswith('.docx'):
-            handle_docx(bucket_name, file_key, data_access_role_arn)
+            handle_docx(bucket_name, file_key, data_access_role_arn, language)
         elif file_key.endswith('.pdf'):
-            handle_pdf(bucket_name, file_key, data_access_role_arn)
+            handle_pdf(bucket_name, file_key, data_access_role_arn, language)
         else:
             logger.error(f"Unsupported file type for file: {file_key}")
             return {
@@ -142,8 +165,8 @@ def lambda_handler(event, context):
             }
         
         # Send email notification after successful translation
-        to_email = os.getenv('SES_RECIPIENT_EMAIL', 'omkarnagarkar53@gmail.com')
-        send_email_via_ses(to_email=to_email, subject="Translation Completed", body=f"The translation of '{os.path.basename(file_key)}' has been completed successfully and uploaded to outputbucket-dev'.")
+        #to_email = os.getenv('SES_RECIPIENT_EMAIL', 'omkarnagarkar53@gmail.com')
+        #send_email_via_ses(to_email=to_email, subject="Translation Completed", body=f"The translation of '{os.path.basename(file_key)}' has been completed successfully and uploaded to outputbucket-dev'.")
         return {
             'statusCode': 200,
             'body': f"File {file_key} processed successfully"
