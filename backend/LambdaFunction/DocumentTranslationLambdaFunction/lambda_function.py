@@ -10,10 +10,43 @@ from email.mime.multipart import MIMEMultipart
 # AWS clients
 s3_client = boto3.client('s3')
 translate_client = boto3.client('translate')
+dynamodb = boto3.client('dynamodb')
 
 # Logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def update_file_status(file_id, status, job_id=None):
+    """
+    Updates the status and JobId of a file in the DynamoDB table.
+    """
+    table_name = os.getenv('DYNAMODB_TABLE', 'FileMetadata')  # Replace with your table name
+    try:
+        # Build update expression dynamically
+        update_expression = "SET #s = :status"
+        expression_values = {':status': {'S': status}}
+        expression_names = {'#s': 'status'}
+
+        if job_id:
+            update_expression += ", #j = :jobId"
+            expression_values[':jobId'] = {'S': job_id}
+            expression_names['#j'] = 'jobId'
+
+        response = dynamodb.update_item(
+            TableName=table_name,
+            Key={
+                'fileId': {'S': file_id}  # Ensure fileId is passed when invoking this function
+            },
+            UpdateExpression=update_expression,
+            ExpressionAttributeNames=expression_names,
+            ExpressionAttributeValues=expression_values
+        )
+        logger.info(f"Updated status for file ID {file_id} to '{status}' with JobId: {job_id}")
+    except Exception as e:
+        logger.error(f"Failed to update status for file ID {file_id}: {e}")
+
+
 
 def send_email_via_ses(to_email, subject, body):
     """
@@ -73,7 +106,8 @@ def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, dat
         }
 
 # Function to handle TXT files
-def handle_txt(bucket_name, file_key, target_language):
+def handle_txt(bucket_name, file_key, target_language ,fileId):
+    update_file_status(fileId, 'IN_PROGRESS', fileId)
     file_name = os.path.basename(file_key)
     local_path = f"/tmp/{file_name}"
     s3_client.download_file(bucket_name, file_key, local_path)
@@ -92,6 +126,9 @@ def handle_txt(bucket_name, file_key, target_language):
     output_key = f"Translated-{file_name}"
     s3_client.put_object(Body=translated_text.encode('utf-8'), Bucket=output_bucket, Key=output_key)
     logger.info(f"TXT file translated and saved to {output_bucket}/{output_key}")
+
+    # Update file status in DynamoDB
+    update_file_status(fileId, 'COMPLETED')
 
     # generate presigned URL
     presigned_url = s3_client.generate_presigned_url('get_object', Params={'Bucket': output_bucket, 'Key': output_key}, ExpiresIn=3600)
@@ -147,12 +184,13 @@ def lambda_handler(event, context):
         
         # Extract language metadata
         language = metadata.get('languagecode', 'en')  # Default to English if not provided
+        fileId = metadata.get('fileid', None)
         print(f"Processing file '{file_key}' with language: {language}")
 
 
         # Determine the file type
         if file_key.endswith('.txt'):
-            handle_txt(bucket_name, file_key, language)
+            handle_txt(bucket_name, file_key, language, fileId)
         elif file_key.endswith('.docx'):
             handle_docx(bucket_name, file_key, data_access_role_arn, language)
         elif file_key.endswith('.pdf'):
