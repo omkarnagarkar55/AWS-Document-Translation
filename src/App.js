@@ -8,7 +8,7 @@ Amplify.configure(config);
 function App({ signOut, user }) {
   return (
     <>
-      <h1>Hello {user.username}</h1>
+      <h1>Welcome to the Document Translation Service</h1>
       <button onClick={signOut}>Sign out</button>
       <UploadFile />
     </>
