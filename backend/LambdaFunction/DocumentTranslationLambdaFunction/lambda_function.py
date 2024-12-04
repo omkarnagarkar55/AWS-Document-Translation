@@ -63,7 +63,7 @@ def send_email_via_ses(to_email, subject, body):
     msg['From'] = from_email
     msg['To'] = to_email
     msg['Subject'] = subject
-    msg.attach(MIMEText(body, 'plain'))
+    msg.attach(MIMEText(body, 'html'))
 
     try:
         # Connect to the SMTP server and send the email
@@ -77,7 +77,7 @@ def send_email_via_ses(to_email, subject, body):
 
 
 # Translation Job Function
-def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, data_access_role_arn, file_extension, target_language):
+def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, data_access_role_arn, file_extension, target_language, fileId):
     content_type = 'text/plain' if file_extension == 'txt' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     try:
         response = translate_client.start_text_translation_job(
@@ -93,13 +93,18 @@ def translation_job(bucket_name, input_prefix, output_bucket, output_prefix, dat
             SourceLanguageCode='en',
             TargetLanguageCodes=[target_language]
         )
-        logger.info(f"Translation job started: {response['JobId']}")
+        jobId = response['JobId']
+        logger.info(f"Translation job started: {jobId}")
+
+        # Update file status in DynamoDB
+        update_file_status(fileId, 'IN_PROGRESS', jobId)
         return {
             'statusCode': 200,
-            'body': f"Translation job initiated successfully with Job ID: {response['JobId']}"
+            'body': f"Translation job initiated successfully with Job ID: {jobId}"
         }
     except Exception as e:
         logger.error(f"Error starting translation job: {e}")
+        update_file_status(fileId, 'FAILED', jobId)
         return {
             'statusCode': 500,
             'body': f"Error starting translation job: {str(e)}"
@@ -147,7 +152,7 @@ def handle_txt(bucket_name, file_key, target_language ,fileId):
     """)
 
 # Function to handle PDF files
-def handle_pdf(bucket_name, file_key, data_access_role_arn, target_language):
+def handle_pdf(bucket_name, file_key, data_access_role_arn, target_language, fileId):
     file_name = os.path.basename(file_key)
     local_pdf_path = f"/tmp/{file_name}"
     s3_client.download_file(bucket_name, file_key, local_pdf_path)
@@ -162,13 +167,13 @@ def handle_pdf(bucket_name, file_key, data_access_role_arn, target_language):
     intermediate_key = f"input/Converted-{new_file_name}"
     s3_client.upload_file(local_docx_path, intermediate_bucket, intermediate_key)
 
-    handle_docx(intermediate_bucket, intermediate_key, data_access_role_arn, target_language)
+    handle_docx(intermediate_bucket, intermediate_key, data_access_role_arn, target_language, fileId)
 
 # Function to handle DOCX files
-def handle_docx(bucket_name, file_key, data_access_role_arn, target_language):
+def handle_docx(bucket_name, file_key, data_access_role_arn, target_language, fileId):
     output_bucket = os.getenv('OUTPUT_BUCKET', 'outputbucket-dev')
     output_prefix = f"Translated-{file_key}"
-    translation_job(bucket_name, file_key, output_bucket, output_prefix, data_access_role_arn, 'docx', target_language)
+    translation_job(bucket_name, file_key, output_bucket, output_prefix, data_access_role_arn, 'docx', target_language, fileId)
 
 # Lambda Handler
 def lambda_handler(event, context):
@@ -192,9 +197,9 @@ def lambda_handler(event, context):
         if file_key.endswith('.txt'):
             handle_txt(bucket_name, file_key, language, fileId)
         elif file_key.endswith('.docx'):
-            handle_docx(bucket_name, file_key, data_access_role_arn, language)
+            handle_docx(bucket_name, file_key, data_access_role_arn, language, fileId)
         elif file_key.endswith('.pdf'):
-            handle_pdf(bucket_name, file_key, data_access_role_arn, language)
+            handle_pdf(bucket_name, file_key, data_access_role_arn, language, fileId)
         else:
             logger.error(f"Unsupported file type for file: {file_key}")
             return {
