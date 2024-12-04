@@ -141,10 +141,10 @@ def handle_txt(bucket_name, file_key, target_language ,fileId):
 
     # Send email notification after successful translation
     to_email = os.getenv('SES_RECIPIENT_EMAIL', 'omkarnagarkar53@gmail.com')
-    send_email_via_ses(to_email=to_email, subject="Translation Completed", body=f"""
+    send_email_via_ses(to_email=to_email, subject=f"Translation Completed - {fileId}", body=f"""
     <html>
     <body>
-        <p>Your translated file is ready for download. You can download it using the following link:</p>
+        <p>Your translated file for file {file_name} is ready for download. You can download it using the following link:</p>
         <p><a href="{presigned_url}">Download Translated File</a></p>
         <p>The link will expire in 1 hour.</p>
     </body>
