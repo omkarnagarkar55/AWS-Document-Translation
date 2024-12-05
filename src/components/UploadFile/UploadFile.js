@@ -7,6 +7,7 @@ import "./UploadFile.css";
 function UploadFile() {
   const [file, setFile] = useState(null);
   const [language, setLanguage] = useState("en");
+  const [isToastVisible, setToastVisible] = useState(false);
 
   const languages = [
     { code: "en", name: "English" },
@@ -68,6 +69,8 @@ function UploadFile() {
 
       if (result.ok) {
         console.log("Upload successful!");
+        setToastVisible(true);
+        setTimeout(() => setToastVisible(false), 5000);
       } else {
         console.log("Upload failed.");
       }
@@ -85,10 +88,7 @@ function UploadFile() {
           {...getRootProps()}
           className={`dropzone ${isDragActive ? "active" : ""}`}
         >
-          <input
-            {...getInputProps()}
-            onChange={handleFileChange}
-          />
+          <input {...getInputProps()} onChange={handleFileChange} />
           <div className="drag-and-drop-content">
             <i className="bi bi-upload icon"></i>
             <p>
@@ -96,37 +96,6 @@ function UploadFile() {
                 ? "Drop the file here..."
                 : "Drag and drop a file here, or click to select one"}
             </p>
-          </div>
-        </div>
-
-        <div className="dropdown-container">
-          <div className="btn-group">
-            <button type="button" className="btn btn-secondary">
-              {languages.find((lang) => lang.code === language)?.name ||
-                "Select Language"}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary dropdown-toggle dropdown-toggle-split"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
-            >
-              <span className="visually-hidden">Toggle Dropdown</span>
-            </button>
-            <ul className="dropdown-menu">
-              {languages.map((lang) => (
-                <li key={lang.code}>
-                  <button
-                    className="dropdown-item"
-                    onClick={() =>
-                      handleLanguageChange({ target: { value: lang.code } })
-                    }
-                  >
-                    {lang.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </div>
@@ -138,6 +107,37 @@ function UploadFile() {
         </p>
       </div>
 
+      <div className="dropdown-container">
+        <div className="btn-group">
+          <button type="button" className="btn btn-secondary">
+            {languages.find((lang) => lang.code === language)?.name ||
+              "Select Language"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary dropdown-toggle dropdown-toggle-split"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <span className="visually-hidden">Toggle Dropdown</span>
+          </button>
+          <ul className="dropdown-menu">
+            {languages.map((lang) => (
+              <li key={lang.code}>
+                <button
+                  className="dropdown-item"
+                  onClick={() =>
+                    handleLanguageChange({ target: { value: lang.code } })
+                  }
+                >
+                  {lang.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
       <div className="button-container">
         <button
           className="btn btn-outline-success upload-button"
@@ -146,6 +146,27 @@ function UploadFile() {
           Upload and Translate
         </button>
       </div>
+
+      {isToastVisible && (
+        <div className="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+          <div
+            className="toast align-items-center text-bg-success border-0 show"
+            role="alert"
+            aria-live="assertive"
+            aria-atomic="true"
+          >
+            <div className="d-flex">
+              <div className="toast-body">File uploaded successfully! The translated file will be sent to your email</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                aria-label="Close"
+                onClick={() => setToastVisible(false)}
+              ></button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
