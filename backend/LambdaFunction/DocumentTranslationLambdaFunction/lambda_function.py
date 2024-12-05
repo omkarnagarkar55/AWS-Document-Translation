@@ -164,7 +164,7 @@ def handle_pdf(bucket_name, file_key, data_access_role_arn, target_language, fil
     converter.close()
 
     intermediate_bucket = os.getenv('INTERMEDIATE_BUCKET', 'outputbucket-dev')
-    intermediate_key = f"input/Converted-{new_file_name}"
+    intermediate_key = f"input/{fileId}/{new_file_name}"
     s3_client.upload_file(local_docx_path, intermediate_bucket, intermediate_key)
 
     handle_docx(intermediate_bucket, intermediate_key, data_access_role_arn, target_language, fileId)
