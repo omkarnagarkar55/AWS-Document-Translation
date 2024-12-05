@@ -5,6 +5,7 @@ import os
 import boto3
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from urllib.parse import quote
 
 s3_client = boto3.client('s3')
 dynamodb = boto3.client('dynamodb')
@@ -126,7 +127,8 @@ def lambda_handler(event, context):
         if fileName.endswith('.pdf'):
             fileName = fileName.replace('.pdf', '.docx')
         outfile_location = f"output/{accountid}-TranslateText-{jobId}/{languageCode}.{fileName}"
-        logger.info(f"Output file location: {outfile_location}")
+        encoded_outfile_location = quote(outfile_location)
+        logger.info(f"Output file location: {encoded_outfile_location}")
 
         # Process the event based on status
         if job_status == "COMPLETED":
@@ -134,7 +136,7 @@ def lambda_handler(event, context):
             update_file_status(file_id, 'COMPLETED')
 
             # generate presigned URL
-            presigned_url = s3_client.generate_presigned_url('get_object', Params={'Bucket': output_bucket, 'Key': outfile_location}, ExpiresIn=3600)
+            presigned_url = s3_client.generate_presigned_url('get_object', Params={'Bucket': output_bucket, 'Key': encoded_outfile_location}, ExpiresIn=3600)
             logger.info(f"Presigned URL generated: {presigned_url}")
 
             # Add logic for successful job completion (e.g., send notification, move files, etc.)
