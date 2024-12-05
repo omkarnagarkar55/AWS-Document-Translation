@@ -31,6 +31,12 @@
       },
       "storage": {
         "AWSTranslationInputBucket": {}
+      },
+      "hosting": {
+        "amplifyhosting": {
+          "appId": "d1roixvbkp4e9m",
+          "type": "manual"
+        }
       }
     }
   }
