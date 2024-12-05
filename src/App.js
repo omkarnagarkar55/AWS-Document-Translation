@@ -10,9 +10,9 @@ Amplify.configure(config);
 function App({ signOut, user }) {
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-light bg-light" >
+      <nav className="navbar navbar-expand-lg bg-primary">
         <div className="container-fluid">
-          <a className="navbar-brand" href="#">
+          <a className="navbar-brand text-white" href="#">
             Document Translation Service
           </a>
           <button
