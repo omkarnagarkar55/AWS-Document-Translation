@@ -23,7 +23,8 @@ The solution is built on a serverless architecture utilizing the following AWS s
 ### Architecture Overview
 
 Refer to the following architecture diagram for the overall flow of the application:
-![AWS Document Translation Architecture](path-to-your-diagram/AWS-Translate-Diagram.png)
+![AWS-Translate-Diagram drawio (1)](https://github.com/user-attachments/assets/867b27e0-d0b8-4604-9a18-cc47ae623c21)
+
 
 ### Key Components
 
